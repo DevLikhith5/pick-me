@@ -35,10 +35,18 @@ const getRedisConnection = (() => {
 export const redis = getRedisConnection();
 
 
-export const LOCK_DRIVER_LUA = `
-  if redis.call("GET", KEYS[1]) == "AVAILABLE" then
-    redis.call("SET", KEYS[1], "BUSY")
-    return 1
+export const MATCH_AND_LOCK_LUA = `
+-- KEYS = []
+-- ARGV = [driverId1, driverId2, driverId3, ...]
+
+for i = 1, #ARGV do
+  local statusKey = "driver:status:" .. ARGV[i]
+
+  if redis.call("GET", statusKey) == "AVAILABLE" then
+    redis.call("SET", statusKey, "BUSY", "EX", 30)
+    return ARGV[i]
   end
-  return 0
+end
+
+return nil
 `;
