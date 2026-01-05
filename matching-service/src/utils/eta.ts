@@ -7,7 +7,7 @@ export interface ETAResult {
 }
 
 const OSRM_BASE_URL = "https://router.project-osrm.org";
-const OSRM_TIMEOUT_MS = 8000;
+const OSRM_TIMEOUT_MS = 2500;
 const FALLBACK_SPEED_KMPH = 25;
 
 export async function estimateETA(

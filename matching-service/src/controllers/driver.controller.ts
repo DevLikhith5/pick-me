@@ -5,7 +5,7 @@ import { getGeohashPrefixes } from "../utils/geoHash";
 export const driverHeartbeatHandler = async (req: Request, res: Response) => {
   const { driverId, lat, lng } = req.body;
 
-  const prefixes = getGeohashPrefixes(lat, lng);
+  const { prefixes } = getGeohashPrefixes(lat, lng);
   const statusKey = `driver:status:${driverId}`;
 
   // 1️⃣ READ FIRST
@@ -50,5 +50,7 @@ export const driverCurrentJobEndedHandler = async (
 
   await redis.set(statusKey, "AVAILABLE", "EX", 30);
 
-  return res.json({ status: "OK" });
+  return res.json({
+    status: "OK",
+  });
 };
