@@ -1,7 +1,7 @@
 import { rabbitMQ } from "../../config/rabbit-mq.config"
 import { redis } from "../../config/redis.config";
-import { drivers, SERVER_ID } from "../../services/driver.service";
-import { users } from "../../services/user.service";
+import { drivers, SERVER_ID as DRIVER_SERVER_ID } from "../../services/driver.service";
+import { users, SERVER_ID as USER_SERVER_ID } from "../../services/user.service";
 import WebSocket from "ws";
 const FANOUT_REALTIME_EXCHANGE = "realtime.fanout"
 
@@ -24,7 +24,7 @@ export const consumeRealtimeExchange = async () => {
                 const { driverId, payload } = event;
                 const owner = await redis.get(`ws:driver:${driverId}`);
 
-                if (owner === SERVER_ID) {
+                if (owner === DRIVER_SERVER_ID) {
                     const ws = drivers.get(driverId);
                     if (ws && ws.readyState === WebSocket.OPEN) {
                         ws.send(JSON.stringify(payload));
@@ -34,9 +34,9 @@ export const consumeRealtimeExchange = async () => {
 
             if (event.target === "USER") {
                 const { userId, payload } = event;
-                const owner = await redis.get(`ws:user:${userId}`);
+                const owner = await redis.get(`ws:rider:${userId}`);
 
-                if (owner === SERVER_ID) {
+                if (owner === USER_SERVER_ID) {
                     const ws = users.get(userId);
                     if (ws && ws.readyState === WebSocket.OPEN) {
                         ws.send(JSON.stringify(payload));
