@@ -4,7 +4,8 @@ import dotenv from 'dotenv';
 type ServerConfig = {
     PORT: number,
     REDIS_URL: string,
-    RABBITMQ_URL: string
+    RABBITMQ_URL: string,
+    WS_URL: string
 }
 
 function loadEnv() {
@@ -15,7 +16,8 @@ function loadEnv() {
 loadEnv();
 
 export const serverConfig: ServerConfig = {
-    PORT: Number(process.env.PORT) || 3000,
+    PORT: Number(process.env.PORT) || 3001,
     REDIS_URL: process.env.REDIS_URL || "localhost:6379",
+    WS_URL: process.env.WS_URL || "ws://localhost:4001",
     RABBITMQ_URL: process.env.RABBITMQ_URL || "amqp://localhost:5672"
 };

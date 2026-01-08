@@ -33,30 +33,3 @@ const getRedisConnection = (() => {
 })();
 
 export const redis = getRedisConnection();
-
-
-export const MATCH_AND_LOCK_LUA = `
--- KEYS = []
--- ARGV[1] = tripId
--- ARGV[2..n] = driverIds
-
-for i = 2, #ARGV do
-  local driverId = ARGV[i]
-
-  local stateKey = "driver:state:" .. driverId
-  local assignKey = "driver:assign:" .. driverId
-
-  local state = redis.call("GET", stateKey)
-
-  if state == "AVAILABLE" then
-    -- lock driver
-    redis.call("SET", stateKey, "ASSIGNED")
-    redis.call("SET", assignKey, ARGV[1], "EX", 10)
-    return driverId
-  end
-end
-
-return nil
-
-
-`;
