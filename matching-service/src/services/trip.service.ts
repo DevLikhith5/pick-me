@@ -17,7 +17,8 @@ interface DistanceCandidate {
 export class TripService {
     async requestMatch(riderId: string, lat: number, lng: number) {
         const tripId = crypto.randomUUID();
-        await redis.set(`trip:rider:${tripId}`, riderId);
+        await redis.set(`trip:rider:${tripId}`, riderId, "EX", 86400);
+        console.log(`[TripService] Created trip ${tripId} for rider ${riderId}. Redis key set.`);
 
         const { userGeoHash, prefixes } = getGeohashPrefixes(lat, lng);
 

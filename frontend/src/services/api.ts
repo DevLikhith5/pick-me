@@ -5,8 +5,8 @@ const api = axios.create({
 });
 
 export const matchService = {
-    findMatch: async (lat: number, lng: number) => {
-        const response = await api.post('/match/', { lat, lng });
+    findMatch: async (riderId: string, lat: number, lng: number) => {
+        const response = await api.post('/match/', { riderId, lat, lng });
         return response.data;
     },
 };
@@ -25,5 +25,13 @@ export const driverService = {
             driverId,
         });
         return response.data;
+    },
+    acceptTrip: async (driverId: string, tripId: string) => {
+        const response = await api.post('/driver/accept', {
+            driverId,
+            tripId,
+        });
+        return response.data;
     }
+
 };

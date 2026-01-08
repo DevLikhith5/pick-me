@@ -1,152 +1,120 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Map } from './components/Map';
-import { matchService, driverService } from './services/api';
+import { SocketProvider } from './context/SocketContext';
+import { DriverView } from './components/DriverView';
+import { RiderView } from './components/RiderView';
 
 function App() {
   const [role, setRole] = useState<'user' | 'driver' | null>(null);
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number }>({ lat: 12.9716, lng: 77.5946 });
-  const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [driverId] = useState(`driver-${Math.floor(Math.random() * 10000)}`);
-  const [status, setStatus] = useState<string>('');
+  const [riderLocation, setRiderLocation] = useState<{ lat: number; lng: number }>({ lat: 12.9716, lng: 77.5946 });
+  const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number }>({ lat: 12.9750, lng: 77.6000 }); // Slightly offset
 
-  const handleFindMatch = async () => {
-    setStatus('Looking for a driver...');
-    try {
-      const result = await matchService.findMatch(userLocation.lat, userLocation.lng);
-      if (result.status === 'MATCHED') {
-        setStatus(`Matched with driver ${result.driverId}! OTA: ${result.etaMinutes} mins`);
-        // Ideally we would fetch driver location here, but for now we just show user
-      } else {
-        setStatus('No driver found.');
-      }
-    } catch (error) {
-      console.error(error);
-      setStatus('Error finding match.');
-    }
-  };
+  // Stable handler to prevent DriverView re-renders/interval resets
+  const handleDriverLocationUpdate = useCallback((lat: number, lng: number) => {
+    setDriverLocation({ lat, lng });
+  }, []);
 
-  const handleDriverHeartbeat = async () => {
-    setStatus('Sending heartbeat...');
-    try {
-      await driverService.heartbeat(driverId, userLocation.lat, userLocation.lng);
-      setStatus('Heartbeat sent. You are active.');
-      setDriverLocation(userLocation); // Show self on map
-    } catch (error) {
-      console.error(error);
-      setStatus('Error sending heartbeat.');
-    }
-  };
-
-  const handleTripEnded = async () => {
-    setStatus('Ending trip...');
-    try {
-      await driverService.tripEnded(driverId);
-      setStatus('Trip ended.');
-    } catch (error) {
-      console.error(error);
-      setStatus('Error ending trip');
-    }
-  }
+  // Persistent IDs to keep session valid during role switch for demo
+  const [driverId] = useState(`driver_${Math.floor(Math.random() * 1000)}`);
+  const [riderId] = useState(`rider_${Math.floor(Math.random() * 1000)}`);
 
   return (
-    <div className="flex flex-col h-screen bg-gray-100">
-      <header className="bg-blue-600 text-white p-4 shadow-md">
-        <h1 className="text-2xl font-bold">Pick Me App</h1>
+    <div className="flex flex-col h-screen bg-gray-50">
+      <header className="bg-slate-900 text-white p-4 shadow-md flex justify-between items-center">
+        <h1 className="text-xl font-bold tracking-tight">Pick Me Simulator</h1>
+        <div className="text-xs text-gray-400">
+          D: {driverId} | R: {riderId}
+        </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar / Controls */}
-        <div className="w-1/3 p-6 bg-white shadow-lg z-10 flex flex-col gap-6 overflow-y-auto">
-          {!role ? (
-            <div className="flex flex-col gap-4">
-              <h2 className="text-xl font-semibold text-center">Choose your role</h2>
-              <button
-                onClick={() => setRole('user')}
-                className="bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-lg font-medium transition"
-              >
-                I'm a Rider
-              </button>
-              <button
-                onClick={() => setRole('driver')}
-                className="bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg font-medium transition"
-              >
-                I'm a Driver
-              </button>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-4">
-              <button onClick={() => setRole(null)} className="text-sm text-gray-500 hover:underline self-start">
-                &larr; Back to Role Selection
-              </button>
-              <h2 className="text-xl font-bold border-b pb-2">
-                {role === 'user' ? 'Rider Mode' : 'Driver Mode'}
-              </h2>
+        {/* Controls Panel */}
+        <div className="w-[400px] bg-white border-r shadow-xl z-20 flex flex-col">
 
-              {/* Location Inputs (Simulated) */}
-              <div className="bg-gray-50 p-4 rounded-md border">
-                <h3 className="font-medium mb-2">Current Location</h3>
-                <div className="flex gap-2 mb-2">
-                  <label className="text-sm">Lat:</label>
-                  <input
-                    type="number"
-                    value={userLocation.lat}
-                    onChange={(e) => setUserLocation({ ...userLocation, lat: parseFloat(e.target.value) })}
-                    className="border rounded px-2 py-1 w-full"
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <label className="text-sm">Lng:</label>
-                  <input
-                    type="number"
-                    value={userLocation.lng}
-                    onChange={(e) => setUserLocation({ ...userLocation, lng: parseFloat(e.target.value) })}
-                    className="border rounded px-2 py-1 w-full"
-                  />
-                </div>
+          {/* Role Switcher */}
+          <div className="p-4 bg-slate-100 border-b flex gap-2">
+            <button
+              onClick={() => setRole('user')}
+              className={`flex-1 py-2 text-sm font-bold rounded ${role === 'user' ? 'bg-blue-600 text-white shadow' : 'bg-white text-gray-600 border hover:bg-gray-50'}`}
+            >
+              Rider Mode
+            </button>
+            <button
+              onClick={() => setRole('driver')}
+              className={`flex-1 py-2 text-sm font-bold rounded ${role === 'driver' ? 'bg-green-600 text-white shadow' : 'bg-white text-gray-600 border hover:bg-gray-50'}`}
+            >
+              Driver Mode
+            </button>
+          </div>
+
+          {/* Role Content */}
+          <div className="flex-1 overflow-y-auto p-6">
+            {!role && (
+              <div className="text-center text-gray-400 mt-20">
+                Select a role above to begin simulation.
               </div>
+            )}
 
-              {/* Actions */}
-              {role === 'user' ? (
-                <button
-                  onClick={handleFindMatch}
-                  className="bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold shadow-md"
-                >
-                  Find a Ride
-                </button>
-              ) : (
-                <>
-                  <div className="text-sm text-gray-600 mb-2">Driver ID: {driverId}</div>
-                  <button
-                    onClick={handleDriverHeartbeat}
-                    className="bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-bold shadow-md"
-                  >
-                    Go Online (Heartbeat)
-                  </button>
-                  <button
-                    onClick={handleTripEnded}
-                    className="bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-bold shadow-md"
-                  >
-                    End Trip
-                  </button>
-                </>
-              )}
-
-              {/* Status & Results */}
-              {status && (
-                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-yellow-800">
-                  {status}
-                </div>
-              )}
+            <div style={{ display: role === 'driver' ? 'block' : 'none' }}>
+              <SocketProvider>
+                <DriverView
+                  driverId={driverId}
+                  location={driverLocation}
+                  onLocationUpdate={handleDriverLocationUpdate}
+                />
+              </SocketProvider>
             </div>
-          )}
+
+            <div style={{ display: role === 'user' ? 'block' : 'none' }}>
+              <SocketProvider>
+                <RiderView
+                  riderId={riderId}
+                  location={riderLocation}
+                  onDriverLocationUpdate={handleDriverLocationUpdate}
+                />
+              </SocketProvider>
+            </div>
+          </div>
+
+          {/* Location Debugger */}
+          <div className="p-4 border-t bg-gray-50 text-sm">
+            <div className="font-bold mb-2 text-gray-500">Global Location Override</div>
+            <div className="flex gap-2">
+              <input
+                type="number"
+                value={role === 'driver' ? driverLocation.lat : riderLocation.lat}
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value);
+                  if (role === 'driver') setDriverLocation({ ...driverLocation, lat: val });
+                  else setRiderLocation({ ...riderLocation, lat: val });
+                }}
+                className="border rounded px-2 py-1 w-24"
+              />
+              <input
+                type="number"
+                value={role === 'driver' ? driverLocation.lng : riderLocation.lng}
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value);
+                  if (role === 'driver') setDriverLocation({ ...driverLocation, lng: val });
+                  else setRiderLocation({ ...riderLocation, lng: val });
+                }}
+                className="border rounded px-2 py-1 w-24"
+              />
+            </div>
+            <p className="text-xs text-gray-400 mt-1">This sets the "current" location for whichever role is active.</p>
+          </div>
+
         </div>
 
         {/* Map Area */}
-        <div className="flex-1">
+        <div className="flex-1 bg-gray-200 relative">
           <Map
-            userLocation={userLocation}
+            userLocation={riderLocation}
             driverLocation={driverLocation}
-            onLocationSelect={(lat, lng) => setUserLocation({ lat, lng })}
+            onLocationSelect={(lat, lng) => {
+              if (role === 'driver') setDriverLocation({ lat, lng });
+              else setRiderLocation({ lat, lng });
+            }}
           />
         </div>
       </div>
@@ -155,3 +123,4 @@ function App() {
 }
 
 export default App;
+

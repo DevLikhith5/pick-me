@@ -7,7 +7,7 @@ export class DriverService {
         const { prefixes } = getGeohashPrefixes(lat, lng);
         const pipe = redis.pipeline();
 
-        // Update location with expiry
+
         pipe.set(
             `driver:${driverId}`,
             JSON.stringify({ lat, lng }),
@@ -15,7 +15,7 @@ export class DriverService {
             15
         );
 
-        // Add to geohash sets
+
         for (const p of prefixes) {
             pipe.sadd(`drivers:${p}`, driverId);
         }
@@ -41,8 +41,8 @@ export class DriverService {
             }
         }
 
-        if (!state) {
-            pipe.set(stateKey, "AVAILABLE");
+        if (!state || state === "AVAILABLE") {
+            pipe.set(stateKey, "AVAILABLE", "EX", 60);
         }
 
         await pipe.exec();
@@ -65,7 +65,9 @@ export class DriverService {
             .exec();
 
         const riderId = await redis.get(`trip:rider:${tripId}`);
+        console.log(`[DriverService] Accepting trip ${tripId}, found riderId: ${riderId}`);
         if (riderId) {
+            console.log(`[DriverService] Publishing DRIVER_ACCEPTED for rider ${riderId}`);
             await publishToRealtimeExchange({
                 target: "USER",
                 userId: riderId,
@@ -75,6 +77,8 @@ export class DriverService {
                     driverId
                 }
             });
+        } else {
+            console.warn(`[DriverService] No rider found for trip ${tripId}`);
         }
     }
 
@@ -88,7 +92,7 @@ export class DriverService {
 
         const tripId = await redis.get(`driver:trip:${driverId}`);
         if (!tripId) {
-            // Inconsistent state, reset to available
+
             await redis.set(stateKey, "AVAILABLE");
             return;
         }
@@ -98,6 +102,7 @@ export class DriverService {
         await redis.multi()
             .set(stateKey, "AVAILABLE")
             .del(`driver:trip:${driverId}`)
+            .del(`trip:rider:${tripId}`)
             .exec();
 
         if (riderId) {

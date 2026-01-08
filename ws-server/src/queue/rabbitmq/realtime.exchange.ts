@@ -35,12 +35,21 @@ export const consumeRealtimeExchange = async () => {
             if (event.target === "USER") {
                 const { userId, payload } = event;
                 const owner = await redis.get(`ws:rider:${userId}`);
+                console.log(`[WS-Realtime] Processing USER event for ${userId}. Owner in Redis: ${owner}, Current Server: ${USER_SERVER_ID}`);
 
                 if (owner === USER_SERVER_ID) {
                     const ws = users.get(userId);
+                    const isOpen = ws && ws.readyState === WebSocket.OPEN;
+                    console.log(`[WS-Realtime] Local socket found? ${!!ws}. Is Open? ${isOpen}`);
+
                     if (ws && ws.readyState === WebSocket.OPEN) {
                         ws.send(JSON.stringify(payload));
+                        console.log(`[WS-Realtime] Sent payload to ${userId}`);
+                    } else {
+                        console.warn(`[WS-Realtime] Could not send to ${userId} - Socket not ready`);
                     }
+                } else {
+                    console.log(`[WS-Realtime] Skipping ${userId} - belonged to ${owner}`);
                 }
             }
 
